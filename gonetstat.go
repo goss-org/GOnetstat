@@ -52,7 +52,7 @@ type Process struct {
 	ForeignPort int64
 }
 
-func getData(t string) []string {
+func getData(t string) ([]string, error) {
 	// Get data from tcp or udp file.
 
 	var proc_t string
@@ -72,13 +72,12 @@ func getData(t string) []string {
 
 	data, err := ioutil.ReadFile(proc_t)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return []string{}, err
 	}
 	lines := strings.Split(string(data), "\n")
 
 	// Return lines without Header line and blank line on the end
-	return lines[1 : len(lines)-1]
+	return lines[1 : len(lines)-1], nil
 
 }
 
@@ -210,13 +209,16 @@ func getInode2pid() map[string]string {
 	return inode2pid
 }
 
-func netstat(t string, lookupPids bool) []Process {
+func netstat(t string, lookupPids bool) ([]Process, error) {
 	// Return a array of Process with Name, Ip, Port, State .. etc
 	// Require Root acess to get information about some processes.
 
 	var Processes []Process
 
-	data := getData(t)
+	data, err := getData(t)
+	if err != nil {
+		return Processes, nil
+	}
 	var inode2pid map[string]string
 	if lookupPids {
 		inode2pid = getInode2pid()
@@ -250,29 +252,25 @@ func netstat(t string, lookupPids bool) []Process {
 
 	}
 
-	return Processes
+	return Processes, nil
 }
 
-func Tcp(lookupPids bool) []Process {
+func Tcp(lookupPids bool) ([]Process, error) {
 	// Get a slice of Process type with TCP data
-	data := netstat("tcp", lookupPids)
-	return data
+	return netstat("tcp", lookupPids)
 }
 
-func Udp(lookupPids bool) []Process {
+func Udp(lookupPids bool) ([]Process, error) {
 	// Get a slice of Process type with UDP data
-	data := netstat("udp", lookupPids)
-	return data
+	return netstat("udp", lookupPids)
 }
 
-func Tcp6(lookupPids bool) []Process {
+func Tcp6(lookupPids bool) ([]Process, error) {
 	// Get a slice of Process type with TCP6 data
-	data := netstat("tcp6", lookupPids)
-	return data
+	return netstat("tcp6", lookupPids)
 }
 
-func Udp6(lookupPids bool) []Process {
+func Udp6(lookupPids bool) ([]Process, error) {
 	// Get a slice of Process type with UDP6 data
-	data := netstat("udp6", lookupPids)
-	return data
+	return netstat("udp6", lookupPids)
 }
