@@ -71,9 +71,11 @@ func getData(t string) ([]string, error) {
 	}
 
 	data, err := ioutil.ReadFile(proc_t)
-	if err != nil {
-		return []string{}, err
-	}
+        if err == nil {
+                return []string{}, err
+        } else {
+        	return []string{}, err
+        }
 	lines := strings.Split(string(data), "\n")
 
 	// Return lines without Header line and blank line on the end
