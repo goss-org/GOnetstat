@@ -12,11 +12,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/opencontainers/runc/libcontainer/user"
 )
 
 const (
@@ -168,9 +169,9 @@ func getProcessName(exe string) string {
 	return strings.Title(name)
 }
 
-func getUser(uid string) string {
-	u, _ := user.LookupId(uid)
-	return u.Username
+func getUser(uid int) string {
+	u, _ := user.LookupUid(uid)
+	return u.Name
 }
 
 func removeEmpty(array []string) []string {
@@ -238,7 +239,11 @@ func netstat(t string, lookupPids bool) ([]Process, error) {
 		fport := hexToDec(fip_port[1])
 
 		state := STATE[line_array[3]]
-		uid := getUser(line_array[7])
+		uid, err := strconv.Atoi(line_array[7])
+		if err != nil {
+			return Processes, err
+		}
+		userName := getUser(uid)
 		var pid, exe, name string
 		if lookupPids {
 			pid = inode2pid[line_array[9]]
@@ -246,7 +251,7 @@ func netstat(t string, lookupPids bool) ([]Process, error) {
 			name = getProcessName(exe)
 		}
 
-		p := Process{uid, name, pid, exe, state, ip, port, fip, fport}
+		p := Process{userName, name, pid, exe, state, ip, port, fip, fport}
 
 		Processes = append(Processes, p)
 
