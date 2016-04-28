@@ -9,8 +9,10 @@
 package GOnetstat
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -93,45 +95,44 @@ func hexToDec(h string) int64 {
 	return d
 }
 
-func convertIp(ip string) string {
-	// Convert the ipv4 to decimal. Have to rearrange the ip because the
-	// default value is in little Endian order.
+// Modified from https://github.com/hverr/status-dashboard/blob/master/widgets/connections.go
+func reverseIPBytes(bytes []byte) {
+	j := len(bytes)
+	m := j / 2
+	j -= 1
+	i := 0
+	for i < m {
+		b := bytes[i]
+		bytes[i] = bytes[j]
+		bytes[j] = b
 
-	var out string
-
-	// Check ip size if greater than 8 is a ipv6 type
-	if len(ip) > 8 {
-		i := []string{ip[30:32],
-			ip[28:30],
-			ip[26:28],
-			ip[24:26],
-			ip[22:24],
-			ip[20:22],
-			ip[18:20],
-			ip[16:18],
-			ip[14:16],
-			ip[12:14],
-			ip[10:12],
-			ip[8:10],
-			ip[6:8],
-			ip[4:6],
-			ip[2:4],
-			ip[0:2]}
-		out = fmt.Sprintf("%v%v:%v%v:%v%v:%v%v:%v%v:%v%v:%v%v:%v%v",
-			i[14], i[15], i[13], i[12],
-			i[10], i[11], i[8], i[9],
-			i[6], i[7], i[4], i[5],
-			i[2], i[3], i[0], i[1])
-
-	} else {
-		i := []int64{hexToDec(ip[6:8]),
-			hexToDec(ip[4:6]),
-			hexToDec(ip[2:4]),
-			hexToDec(ip[0:2])}
-
-		out = fmt.Sprintf("%v.%v.%v.%v", i[0], i[1], i[2], i[3])
+		i += 1
+		j -= 1
 	}
-	return out
+}
+
+func bytesToIP(bytes []byte) string {
+	switch len(bytes) {
+	case 4:
+		reverseIPBytes(bytes[0:4])
+	case 16:
+		reverseIPBytes(bytes[0:4])
+		reverseIPBytes(bytes[4:8])
+		reverseIPBytes(bytes[8:12])
+		reverseIPBytes(bytes[12:16])
+	default:
+		return ""
+	}
+
+	return strings.ToUpper(net.IP(bytes).String())
+}
+
+func convertIp(ip string) (string, error) {
+	ipb, err := hex.DecodeString(ip)
+	if err != nil {
+		return "", err
+	}
+	return bytesToIP(ipb), nil
 }
 
 func findPid(inode string) string {
@@ -230,12 +231,18 @@ func netstat(t string, lookupPids bool) ([]Process, error) {
 		// local ip and port
 		line_array := removeEmpty(strings.Split(strings.TrimSpace(line), " "))
 		ip_port := strings.Split(line_array[1], ":")
-		ip := convertIp(ip_port[0])
+		ip, err := convertIp(ip_port[0])
+		if err != nil {
+			return Processes, err
+		}
 		port := hexToDec(ip_port[1])
 
 		// foreign ip and port
 		fip_port := strings.Split(line_array[2], ":")
-		fip := convertIp(fip_port[0])
+		fip, err := convertIp(fip_port[0])
+		if err != nil {
+			return Processes, err
+		}
 		fport := hexToDec(fip_port[1])
 
 		state := STATE[line_array[3]]
