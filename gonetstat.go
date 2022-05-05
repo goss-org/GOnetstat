@@ -14,12 +14,11 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/opencontainers/runc/libcontainer/user"
 )
 
 const (
@@ -171,7 +170,11 @@ func getProcessName(exe string) string {
 }
 
 func getUser(uid int) string {
-	u, _ := user.LookupUid(uid)
+	u, err := user.LookupId(strconv.Itoa(uid))
+	if err != nil {
+		return ""
+	}
+
 	return u.Name
 }
 
