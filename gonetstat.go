@@ -11,7 +11,6 @@ package GOnetstat
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -72,7 +71,7 @@ func getData(t string) ([]string, error) {
 		os.Exit(1)
 	}
 
-	data, err := ioutil.ReadFile(proc_t)
+	data, err := os.ReadFile(proc_t)
 	if err != nil {
 		return []string{}, err
 	}
